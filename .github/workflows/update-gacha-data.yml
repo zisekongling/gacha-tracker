@@ -108,7 +108,7 @@ jobs:
         run: |
           # 关键修正：使用 https://用户名:令牌@仓库地址 格式
           # 这里用户名固定为 gitee，密码使用 secrets.GITEE_TOKEN
-          GITEE_URL="https://gitee:${GITEE_TOKEN}@gitee.com/zisekongling/gacha-tracker.git"
+          GITEE_URL="https://zisekongling:${GITEE_TOKEN}@gitee.com/zisekongling/gacha-tracker.git"
           
           # 强制推送到 Gitee 的 main 分支（与你 GitHub 主分支一致）
           git push -f "${GITEE_URL}" main
