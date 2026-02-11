@@ -75,22 +75,22 @@ jobs:
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit and push changes
+      - name: Commit and push changes to GitHub
         if: steps.check_changes.outputs.changes == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add genshin/gacha_data.json hsr/gacha_data.json zzz/gacha_data.json
           git commit -m "Update gacha data $(date +'%Y-%m-%d')"
-          # Pull latest changes and rebase
-          git pull --rebase origin main || true
-          # Force push changes
-          git push -f
+          # 拉取最新代码并变基，然后推送到 GitHub 原仓库
+          git pull --rebase origin main
+          git push origin main
 
-      - name: No changes to commit
+      - name: No changes to commit on GitHub
         if: steps.check_changes.outputs.changes == 'false'
-        run: echo "No changes to commit"
+        run: echo "No changes to commit on GitHub"
 
+      # ---------- 推送至 Gitee 的正确方法（已修正）----------
       - name: Check Gitee Token
         id: check_gitee_token
         run: |
@@ -100,23 +100,19 @@ jobs:
             echo "gitee_token_set=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Push to Gitee
-        if: steps.check_changes.outputs.changes == 'true' && steps.check_gitee_token.outputs.gitee_token_set == 'true'
+      - name: Push to Gitee (with or without changes)
+        if: steps.check_gitee_token.outputs.gitee_token_set == 'true'
+        env:
+          # 将 Token 放入环境变量，避免在命令行中直接显示
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
-          # Add Gitee remote with token
-          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/zisekongling/gacha-tracker.git || true
-          # Force push changes to Gitee
-          git push -f gitee main
-          echo "Force pushed changes to Gitee repository"
-
-      - name: Push to Gitee (no changes)
-        if: steps.check_changes.outputs.changes == 'false' && steps.check_gitee_token.outputs.gitee_token_set == 'true'
-        run: |
-          # Add Gitee remote with token if not exists
-          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/zisekongling/gacha-tracker.git || true
-          # Force push latest main branch to Gitee
-          git push -f gitee main
-          echo "Force pushed latest main branch to Gitee repository"
+          # 关键修正：使用 https://用户名:令牌@仓库地址 格式
+          # 这里用户名固定为 gitee，密码使用 secrets.GITEE_TOKEN
+          GITEE_URL="https://gitee:${GITEE_TOKEN}@gitee.com/zisekongling/gacha-tracker.git"
+          
+          # 强制推送到 Gitee 的 main 分支（与你 GitHub 主分支一致）
+          git push -f "${GITEE_URL}" main
+          echo "Successfully force-pushed to Gitee repository"
 
       - name: Gitee Token not set
         if: steps.check_gitee_token.outputs.gitee_token_set == 'false'
