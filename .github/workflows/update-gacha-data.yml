@@ -2,8 +2,11 @@ name: Update Gacha Data
 
 on:
   schedule:
-    # 每天凌晨2点运行
-    - cron: '0 2 * * *'
+    # 每周五晚上8点和9点运行
+    - cron: '0 20 * * 5'
+    - cron: '0 21 * * 5'
+    # 每周六早上8点运行
+    - cron: '0 8 * * 6'
   push:
     branches:
       - main
@@ -12,6 +15,8 @@ on:
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,17 +91,17 @@ jobs:
       - name: Push to Gitee
         if: steps.check_changes.outputs.changes == 'true'
         run: |
-          # Add Gitee remote
-          git remote add gitee https://gitee.com/zisekongling/gacha-tracker.git
-          # Push changes to Gitee
-          git push gitee main
-          echo "Pushed changes to Gitee repository"
+          # Add Gitee remote with token
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/zisekongling/gacha-tracker.git || true
+          # Force push changes to Gitee
+          git push -f gitee main
+          echo "Force pushed changes to Gitee repository"
 
       - name: Push to Gitee (no changes)
         if: steps.check_changes.outputs.changes == 'false'
         run: |
-          # Add Gitee remote if not exists
-          git remote add gitee https://gitee.com/zisekongling/gacha-tracker.git || true
-          # Push latest main branch to Gitee
-          git push gitee main
-          echo "Pushed latest main branch to Gitee repository"
+          # Add Gitee remote with token if not exists
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/zisekongling/gacha-tracker.git || true
+          # Force push latest main branch to Gitee
+          git push -f gitee main
+          echo "Force pushed latest main branch to Gitee repository"
