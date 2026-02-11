@@ -1,0 +1,102 @@
+name: Update Gacha Data
+
+on:
+  schedule:
+    # 每天凌晨2点运行
+    - cron: '0 2 * * *'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Update Genshin Impact gacha data
+        run: |
+          python -c "
+          from app import fetch_genshin_gacha_data
+          import json
+          data = fetch_genshin_gacha_data()
+          with open('genshin/gacha_data.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          print('Updated Genshin Impact gacha data')
+          "
+
+      - name: Update Honkai Star Rail gacha data
+        run: |
+          python -c "
+          from app import fetch_hsr_wish_data
+          import json
+          data = fetch_hsr_wish_data()
+          with open('hsr/gacha_data.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          print('Updated Honkai Star Rail gacha data')
+          "
+
+      - name: Update Zenless Zone Zero gacha data
+        run: |
+          python -c "
+          from app import get_zzz_gacha_data
+          import json
+          data = get_zzz_gacha_data()
+          with open('zzz/gacha_data.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          print('Updated Zenless Zone Zero gacha data')
+          "
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --name-only | grep -E 'genshin/gacha_data.json|hsr/gacha_data.json|zzz/gacha_data.json'; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add genshin/gacha_data.json hsr/gacha_data.json zzz/gacha_data.json
+          git commit -m "Update gacha data $(date +'%Y-%m-%d')"
+          git push
+
+      - name: No changes to commit
+        if: steps.check_changes.outputs.changes == 'false'
+        run: echo "No changes to commit"
+
+      - name: Push to Gitee
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          # Add Gitee remote
+          git remote add gitee https://gitee.com/zisekongling/gacha-tracker.git
+          # Push changes to Gitee
+          git push gitee main
+          echo "Pushed changes to Gitee repository"
+
+      - name: Push to Gitee (no changes)
+        if: steps.check_changes.outputs.changes == 'false'
+        run: |
+          # Add Gitee remote if not exists
+          git remote add gitee https://gitee.com/zisekongling/gacha-tracker.git || true
+          # Push latest main branch to Gitee
+          git push gitee main
+          echo "Pushed latest main branch to Gitee repository"
