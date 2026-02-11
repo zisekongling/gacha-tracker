@@ -91,8 +91,17 @@ jobs:
         if: steps.check_changes.outputs.changes == 'false'
         run: echo "No changes to commit"
 
+      - name: Check Gitee Token
+        id: check_gitee_token
+        run: |
+          if [ -z "${{ secrets.GITEE_TOKEN }}" ]; then
+            echo "gitee_token_set=false" >> $GITHUB_OUTPUT
+          else
+            echo "gitee_token_set=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Push to Gitee
-        if: steps.check_changes.outputs.changes == 'true'
+        if: steps.check_changes.outputs.changes == 'true' && steps.check_gitee_token.outputs.gitee_token_set == 'true'
         run: |
           # Add Gitee remote with token
           git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/zisekongling/gacha-tracker.git || true
@@ -101,10 +110,14 @@ jobs:
           echo "Force pushed changes to Gitee repository"
 
       - name: Push to Gitee (no changes)
-        if: steps.check_changes.outputs.changes == 'false'
+        if: steps.check_changes.outputs.changes == 'false' && steps.check_gitee_token.outputs.gitee_token_set == 'true'
         run: |
           # Add Gitee remote with token if not exists
           git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/zisekongling/gacha-tracker.git || true
           # Force push latest main branch to Gitee
           git push -f gitee main
           echo "Force pushed latest main branch to Gitee repository"
+
+      - name: Gitee Token not set
+        if: steps.check_gitee_token.outputs.gitee_token_set == 'false'
+        run: echo "Gitee Token is not set, skipping push to Gitee"
